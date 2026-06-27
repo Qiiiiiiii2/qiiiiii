@@ -1,0 +1,617 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>简易收银台</title>
+<!-- PWA：添加到主屏幕后全屏运行，去掉浏览器地址栏，外观和体验更接近App -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="收银台">
+<meta name="theme-color" content="#2F5A4C">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232F5A4C'/%3E%3Ctext x='50' y='62' font-size='46' text-anchor='middle' fill='white' font-family='sans-serif'%3E%C2%A5%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232F5A4C'/%3E%3Ctext x='50' y='62' font-size='46' text-anchor='middle' fill='white' font-family='sans-serif'%3E%C2%A5%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --paper:#FBF8F3; --panel:#ffffff; --ink:#2A2520; --muted:#8A7F70;
+    --line:#E7E0D5; --brand:#2F5A4C; --brand-soft:#EAF0EC; --money:#B4661E;
+    --danger:#B23A2E; --danger-soft:#FBEEEC;
+    --radius:14px; --num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-text-size-adjust:100%}
+  body{max-width:760px;margin:0 auto;padding:14px 14px 40px}
+  .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .brand{font-size:19px;font-weight:700;letter-spacing:.3px}
+  .brand small{font-weight:500;color:var(--muted);font-size:12px;margin-left:6px;cursor:pointer}
+  .tabs{display:flex;gap:6px;background:#F0EAE0;padding:4px;border-radius:12px;margin-bottom:14px}
+  .tabs button{flex:1;border:0;background:transparent;padding:10px 4px;border-radius:9px;
+    font-size:15px;font-weight:600;color:var(--muted);cursor:pointer}
+  .tabs button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+  label.fld{display:block;font-size:13px;color:var(--muted);margin:0 0 5px}
+  input,select{width:100%;padding:13px 12px;border:1.5px solid var(--line);border-radius:11px;
+    font-size:16px;background:#fff;color:var(--ink);font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--brand)}
+  .scan input{font-size:20px;font-family:var(--num);letter-spacing:1px;border-color:var(--brand);
+    border-width:2px;text-align:center}
+  .hint{font-size:12px;color:var(--muted);margin-top:7px;text-align:center}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;cursor:pointer;
+    padding:13px 16px;border-radius:11px;font-size:15px;font-weight:600;font-family:inherit}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-line{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .btn-ghost{background:var(--brand-soft);color:var(--brand)}
+  .btn-danger{background:var(--danger-soft);color:var(--danger)}
+  .btn:active{transform:translateY(1px)}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  /* cart */
+  .cart{display:flex;flex-direction:column;gap:8px;min-height:60px}
+  .empty{color:var(--muted);text-align:center;padding:26px 10px;font-size:14px}
+  .item{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:12px}
+  .item .nm{flex:1;min-width:0}
+  .item .nm b{font-size:15px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .nm span{font-size:12px;color:var(--muted);font-family:var(--num)}
+  .qty{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .qty button{width:34px;height:34px;border:0;background:#F4EFE7;font-size:18px;cursor:pointer;color:var(--ink)}
+  .qty span{min-width:34px;text-align:center;font-family:var(--num);font-size:15px}
+  .item .sub{font-family:var(--num);font-size:16px;font-weight:600;min-width:62px;text-align:right}
+  .x{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 2px}
+  /* total bar */
+  .totalbar{position:sticky;bottom:0;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);padding:14px;margin-top:4px;
+    box-shadow:0 -6px 20px rgba(0,0,0,.05)}
+  .totalbar .line{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+  .totalbar .lab{font-size:14px;color:var(--muted)}
+  .totalbar .big{font-family:var(--num);font-size:34px;font-weight:700;color:var(--money)}
+  .totalbar .cnt{font-size:13px;color:var(--muted)}
+  /* product list */
+  .plist{display:flex;flex-direction:column;gap:8px}
+  .prod{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:12px}
+  .prod .nm{flex:1;min-width:0}
+  .prod .nm b{font-size:15px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prod .nm span{font-size:12px;color:var(--muted);font-family:var(--num)}
+  .prod .pr{font-family:var(--num);font-weight:600;color:var(--money);min-width:54px;text-align:right}
+  .mini{padding:7px 11px;font-size:13px;border-radius:9px}
+  /* sales */
+  .sale{padding:11px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
+  .sale .hd{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px}
+  .sale .amt{font-family:var(--num);font-weight:700;color:var(--money)}
+  .sale .det{font-size:13px;color:var(--ink)}
+  .stat{display:flex;gap:10px;margin-bottom:14px}
+  .stat .box{flex:1;background:var(--brand-soft);border-radius:12px;padding:12px 14px}
+  .stat .box .v{font-family:var(--num);font-size:24px;font-weight:700;color:var(--brand)}
+  .stat .box .k{font-size:12px;color:var(--muted)}
+  /* modal */
+  .mask{position:fixed;inset:0;background:rgba(40,37,32,.42);display:none;
+    align-items:flex-end;justify-content:center;z-index:50}
+  .mask.on{display:flex}
+  .sheet{background:var(--panel);width:100%;max-width:760px;border-radius:18px 18px 0 0;padding:18px 16px 22px;
+    animation:up .18s ease}
+  @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+  .sheet h3{margin:2px 0 14px;font-size:17px}
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 4px}
+  .pad button{padding:16px 0;font-size:20px;border:1px solid var(--line);background:#fff;border-radius:11px;
+    font-family:var(--num);cursor:pointer}
+  .recv{font-family:var(--num);font-size:30px;font-weight:700;text-align:center;padding:10px;
+    border:2px solid var(--line);border-radius:12px;margin-bottom:6px}
+  .change{text-align:center;font-size:15px;margin:10px 0 14px}
+  .change b{font-family:var(--num);font-size:22px;color:var(--brand)}
+  .hide{display:none}
+  .sub-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:10px 16px;border-radius:30px;font-size:14px;z-index:99;opacity:0;transition:.2s;pointer-events:none}
+  .toast.on{opacity:1}
+</style>
+
+<div class="top">
+  <div class="brand">简易收银台 <small id="shopname" onclick="renameShop()" title="点击设置店名"></small></div>
+  <button class="btn btn-line mini" onclick="exportSales()">导出账目</button>
+</div>
+
+<div class="tabs">
+  <button class="on" data-tab="pay" onclick="tab('pay')">收银</button>
+  <button data-tab="goods" onclick="tab('goods')">商品</button>
+  <button data-tab="rec" onclick="tab('rec')">记录</button>
+</div>
+
+<!-- ============ 收银 ============ -->
+<section id="pay">
+  <div class="card scan">
+    <input id="scan" placeholder="扫码 / 输入条码后回车"
+      inputmode="numeric" autocomplete="off" autofocus
+      onkeydown="if(event.key==='Enter')onScan()">
+    <div class="hint">扫码枪扫一下会自动录入并加入清单 · 没条码的商品用下面「手动加一笔」</div>
+    <div class="sub-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="openCamScan()">📷 用相机扫码</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="openManual()">手动加一笔（无码 / 直接按金额）</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cart" id="cart"><div class="empty">清单是空的，扫个商品试试</div></div>
+  </div>
+
+  <div class="totalbar">
+    <div class="line">
+      <div><div class="lab">合计</div><div class="cnt" id="cnt">0 件</div></div>
+      <div class="big" id="total">¥0.00</div>
+    </div>
+    <div class="row">
+      <button class="btn btn-line" onclick="clearCart()">清空</button>
+      <button class="btn btn-primary" style="flex:2" onclick="openPay()">收款</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 商品 ============ -->
+<section id="goods" class="hide">
+  <div class="card">
+    <div class="row" style="margin-bottom:10px">
+      <input id="search" placeholder="搜品名或条码" oninput="renderProducts()">
+      <button class="btn btn-primary" style="flex:0 0 auto;padding-left:18px;padding-right:18px" onclick="openProd()">＋ 新增</button>
+    </div>
+    <div class="plist" id="plist"></div>
+  </div>
+  <div class="card">
+    <div class="lab" style="font-size:13px;color:var(--muted);margin-bottom:8px">批量管理（用 Excel 整理好再导入最快）</div>
+    <div class="row">
+      <button class="btn btn-line" onclick="exportProducts()">导出商品 CSV</button>
+      <button class="btn btn-line" onclick="document.getElementById('imp').click()">导入商品 CSV</button>
+    </div>
+    <input id="imp" type="file" accept=".csv,text/csv" class="hide" onchange="importProducts(event)">
+    <div class="hint" style="text-align:left;margin-top:8px">CSV 四列：条码,品名,价格,库存（第一行可写表头，导入会自动跳过；不写库存列也行，默认按0算）</div>
+  </div>
+</section>
+
+<!-- ============ 记录 ============ -->
+<section id="rec" class="hide">
+  <div class="stat">
+    <div class="box"><div class="v" id="todayAmt">¥0</div><div class="k">今日收款</div></div>
+    <div class="box"><div class="v" id="todayCnt">0</div><div class="k">今日单数</div></div>
+  </div>
+  <div id="salelist"></div>
+</section>
+
+<!-- 手动加一笔 -->
+<div class="mask" id="manualMask">
+  <div class="sheet">
+    <h3>手动加一笔</h3>
+    <label class="fld">品名</label>
+    <input id="mName" placeholder="例如 称重蔬菜 / 无条码商品" style="margin-bottom:10px">
+    <label class="fld">金额（元）</label>
+    <input id="mPrice" inputmode="decimal" placeholder="0.00" style="margin-bottom:14px">
+    <div class="row">
+      <button class="btn btn-line" onclick="close_('manualMask')">取消</button>
+      <button class="btn btn-primary" onclick="addManual()">加入清单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增/编辑商品 -->
+<div class="mask" id="prodMask">
+  <div class="sheet">
+    <h3 id="prodTitle">新增商品</h3>
+    <label class="fld">条码（可点这里再用扫码枪扫）</label>
+    <input id="pBarcode" inputmode="numeric" placeholder="扫码或手输" style="margin-bottom:10px">
+    <label class="fld">品名</label>
+    <input id="pName" placeholder="例如 矿泉水 550ml" style="margin-bottom:10px">
+    <div class="row">
+      <div>
+        <label class="fld">价格（元）</label>
+        <input id="pPrice" inputmode="decimal" placeholder="0.00" style="margin-bottom:14px">
+      </div>
+      <div>
+        <label class="fld">库存（件）</label>
+        <input id="pStock" inputmode="numeric" placeholder="0" style="margin-bottom:14px">
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn btn-line" onclick="close_('prodMask')">取消</button>
+      <button class="btn btn-primary" onclick="saveProd()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 入库（快捷加库存，不用整张改商品） -->
+<div class="mask" id="stockMask">
+  <div class="sheet">
+    <h3>入库：<span id="stockProdName" style="color:var(--brand)"></span></h3>
+    <div class="hint" style="margin:0 0 10px;text-align:left">当前库存 <b id="stockCur" style="font-family:var(--num)"></b> 件</div>
+    <label class="fld">本次入库数量</label>
+    <input id="stockAdd" inputmode="numeric" placeholder="例如 50" style="margin-bottom:14px">
+    <div class="row">
+      <button class="btn btn-line" onclick="close_('stockMask')">取消</button>
+      <button class="btn btn-primary" onclick="confirmStockIn()">确认入库</button>
+    </div>
+  </div>
+</div>
+
+<!-- 收款 -->
+<div class="mask" id="payMask">
+  <div class="sheet">
+    <h3>收款 · 应收 <span id="payDue" style="color:var(--money);font-family:var(--num)"></span></h3>
+    <label class="fld">实收金额</label>
+    <div class="recv" id="recv">0</div>
+    <div class="change" id="changeBox"></div>
+    <div class="pad">
+      <button onclick="key('1')">1</button><button onclick="key('2')">2</button><button onclick="key('3')">3</button>
+      <button onclick="key('4')">4</button><button onclick="key('5')">5</button><button onclick="key('6')">6</button>
+      <button onclick="key('7')">7</button><button onclick="key('8')">8</button><button onclick="key('9')">9</button>
+      <button onclick="key('.')">.</button><button onclick="key('0')">0</button><button onclick="key('del')">⌫</button>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn btn-line" onclick="exactPay()">实收=应收</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn btn-line" onclick="close_('payMask')">返回</button>
+      <button class="btn btn-primary" style="flex:2" onclick="finishPay()">完成收款</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 相机扫码 -->
+<div class="mask" id="camMask">
+  <div class="sheet" style="padding-bottom:16px">
+    <h3 style="display:flex;justify-content:space-between;align-items:center">
+      <span>用相机扫码</span>
+      <button class="btn btn-line mini" onclick="closeCamScan()">关闭</button>
+    </h3>
+    <div id="qr-reader" style="width:100%;border-radius:12px;overflow:hidden;background:#000;min-height:260px"></div>
+    <div class="hint" id="camHint">把条码放进框里对准，识别到会自动加入清单并继续扫下一个</div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+
+<script>
+// ---------- 数据 ----------
+let products = [];   // {barcode,name,price}
+let sales = [];      // {time, items:[{name,price,qty}], total}
+let cart = [];       // {key,name,price,qty,barcode}
+let shopName = '';
+
+function load(){
+  try{const v=localStorage.getItem('pos_products'); if(v) products=JSON.parse(v);}catch(e){products=[];}
+  try{const v=localStorage.getItem('pos_sales'); if(v) sales=JSON.parse(v);}catch(e){sales=[];}
+  try{shopName=localStorage.getItem('pos_shopname')||'';}catch(e){shopName='';}
+  // 仅首次打开放两个示例商品，方便立刻体验；以后删光也不会再冒出来
+  let seeded=false; try{seeded=!!localStorage.getItem('pos_init');}catch(e){}
+  if(!seeded){
+    products=[
+      {barcode:'6900000000017',name:'示例商品 A（可删除）',price:5,stock:20},
+      {barcode:'6900000000024',name:'示例商品 B（可删除）',price:12.5,stock:15}
+    ];
+    try{localStorage.setItem('pos_init','1');}catch(e){}
+    saveProducts();
+  }
+  renderShop(); renderProducts(); renderCart(); renderSales();
+}
+function saveProducts(){try{localStorage.setItem('pos_products',JSON.stringify(products));}catch(e){toast('保存失败，换个浏览器试试');}}
+function saveSales(){try{localStorage.setItem('pos_sales',JSON.stringify(sales));}catch(e){}}
+
+// ---------- 店名 ----------
+function renderShop(){
+  const el=document.getElementById('shopname');
+  el.textContent = shopName ? ('· '+shopName) : '· 点此设店名';
+  el.style.color = shopName ? 'var(--muted)' : 'var(--brand)';
+}
+function renameShop(){
+  const v=prompt('设置店名（显示在左上角，可留空）', shopName);
+  if(v===null) return;
+  shopName=v.trim();
+  try{localStorage.setItem('pos_shopname',shopName);}catch(e){}
+  renderShop();
+}
+
+// ---------- 切换 ----------
+function tab(t){
+  ['pay','goods','rec'].forEach(x=>document.getElementById(x).classList.toggle('hide',x!==t));
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  if(t==='pay') focusScan();
+  if(t==='rec') renderSales();
+}
+function focusScan(){const s=document.getElementById('scan'); if(s){s.value='';s.focus();}}
+
+// ---------- 扫码 ----------
+function onScan(){
+  const el=document.getElementById('scan');
+  const code=el.value.trim(); el.value='';
+  if(!code){focusScan();return;}
+  const p=products.find(x=>x.barcode===code);
+  if(p){ addToCart(p); }
+  else{ if(confirm('没找到条码 '+code+'\n要现在新增这个商品吗？')){ openProd(code); } }
+  focusScan();
+}
+
+// ---------- 相机扫码 ----------
+let camScanner=null, camLastCode='', camLastTime=0;
+function openCamScan(){
+  open_('camMask');
+  if(typeof Html5Qrcode==='undefined'){
+    document.getElementById('camHint').innerHTML='<span style="color:var(--danger)">扫码组件加载失败，检查一下网络连接（首次使用需要联网加载一次）</span>';
+    return;
+  }
+  camScanner=new Html5Qrcode('qr-reader');
+  const config={
+    fps:10,
+    qrbox:{width:260,height:140},
+    formatsToSupport:[
+      Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.QR_CODE
+    ]
+  };
+  camScanner.start({facingMode:'environment'}, config, onCamDecoded, ()=>{})
+    .catch(err=>{
+      document.getElementById('camHint').innerHTML='<span style="color:var(--danger)">打不开相机：'+(err&&err.message?err.message:err)+'（检查一下是否给了相机权限）</span>';
+    });
+}
+function onCamDecoded(text){
+  const now=Date.now();
+  if(text===camLastCode && now-camLastTime<1500) return; // 同一个码连续扫到，1.5秒内去重，避免重复加入
+  camLastCode=text; camLastTime=now;
+  const code=text.trim();
+  const p=products.find(x=>x.barcode===code);
+  if(p){ addToCart(p); }
+  else{
+    if(camScanner){ camScanner.pause(true); }
+    if(confirm('没找到条码 '+code+'\n要现在新增这个商品吗？')){
+      closeCamScan(); openProd(code); return;
+    }
+    if(camScanner){ camScanner.resume(); }
+  }
+}
+function closeCamScan(){
+  close_('camMask');
+  if(camScanner){
+    camScanner.stop().then(()=>{camScanner.clear();camScanner=null;}).catch(()=>{camScanner=null;});
+  }
+  focusScan();
+}
+function addToCart(p){
+  const key='b'+p.barcode;
+  const ex=cart.find(c=>c.key===key);
+  if(ex) ex.qty++; else cart.push({key,name:p.name,price:p.price,qty:1,barcode:p.barcode});
+  renderCart();
+  const stock=p.stock||0, inCart=cart.find(c=>c.key===key).qty;
+  if(stock<=0) toast('已加入：'+p.name+'（库存已是0，注意补货）');
+  else if(inCart>stock) toast('已加入：'+p.name+'（超出库存，剩'+stock+'）');
+  else toast('已加入：'+p.name);
+}
+function addManual(){
+  const name=(document.getElementById('mName').value||'').trim();
+  const price=parseFloat(document.getElementById('mPrice').value);
+  if(!name){toast('填一下品名');return;}
+  if(!(price>=0)){toast('金额填错了');return;}
+  cart.push({key:'m'+Date.now(),name,price,qty:1,barcode:''});
+  document.getElementById('mName').value='';document.getElementById('mPrice').value='';
+  close_('manualMask'); renderCart();
+}
+function chQty(key,d){
+  const it=cart.find(c=>c.key===key); if(!it)return;
+  it.qty+=d; if(it.qty<=0) cart=cart.filter(c=>c.key!==key);
+  renderCart();
+}
+function delItem(key){cart=cart.filter(c=>c.key!==key);renderCart();}
+function clearCart(){if(cart.length&&!confirm('清空当前清单？'))return;cart=[];renderCart();focusScan();}
+
+function cartTotal(){return cart.reduce((s,c)=>s+c.price*c.qty,0);}
+function cartCount(){return cart.reduce((s,c)=>s+c.qty,0);}
+
+function renderCart(){
+  const box=document.getElementById('cart');
+  if(!cart.length){box.innerHTML='<div class="empty">清单是空的，扫个商品试试</div>';}
+  else{
+    box.innerHTML=cart.map(c=>`
+      <div class="item">
+        <div class="nm"><b>${esc(c.name)}</b><span>¥${c.price.toFixed(2)}${c.barcode?' · '+c.barcode:''}</span></div>
+        <div class="qty">
+          <button onclick="chQty('${c.key}',-1)">−</button>
+          <span>${c.qty}</span>
+          <button onclick="chQty('${c.key}',1)">＋</button>
+        </div>
+        <div class="sub">¥${(c.price*c.qty).toFixed(2)}</div>
+        <button class="x" onclick="delItem('${c.key}')">✕</button>
+      </div>`).join('');
+  }
+  document.getElementById('total').textContent='¥'+cartTotal().toFixed(2);
+  document.getElementById('cnt').textContent=cartCount()+' 件';
+}
+
+// ---------- 商品管理 ----------
+let editingBarcode=null;
+function openProd(prefill){
+  editingBarcode=null;
+  document.getElementById('prodTitle').textContent='新增商品';
+  document.getElementById('pBarcode').value=(typeof prefill==='string')?prefill:'';
+  document.getElementById('pName').value='';
+  document.getElementById('pPrice').value='';
+  document.getElementById('pStock').value='';
+  open_('prodMask');
+}
+function editProd(barcode){
+  const p=products.find(x=>x.barcode===barcode); if(!p)return;
+  editingBarcode=barcode;
+  document.getElementById('prodTitle').textContent='编辑商品';
+  document.getElementById('pBarcode').value=p.barcode;
+  document.getElementById('pName').value=p.name;
+  document.getElementById('pPrice').value=p.price;
+  document.getElementById('pStock').value=p.stock||0;
+  open_('prodMask');
+}
+function saveProd(){
+  const barcode=document.getElementById('pBarcode').value.trim();
+  const name=document.getElementById('pName').value.trim();
+  const price=parseFloat(document.getElementById('pPrice').value);
+  const stockVal=document.getElementById('pStock').value.trim();
+  const stock=stockVal===''?0:parseInt(stockVal,10);
+  if(!barcode){toast('条码不能空');return;}
+  if(!name){toast('填一下品名');return;}
+  if(!(price>=0)){toast('价格填错了');return;}
+  if(isNaN(stock)||stock<0){toast('库存填错了');return;}
+  const dup=products.find(x=>x.barcode===barcode&&x.barcode!==editingBarcode);
+  if(dup){toast('这个条码已存在');return;}
+  if(editingBarcode){
+    const p=products.find(x=>x.barcode===editingBarcode);
+    p.barcode=barcode;p.name=name;p.price=price;p.stock=stock;
+  }else{ products.push({barcode,name,price,stock}); }
+  saveProducts(); renderProducts(); close_('prodMask'); toast('已保存');
+}
+function delProd(barcode){
+  if(!confirm('删除这个商品？'))return;
+  products=products.filter(x=>x.barcode!==barcode);
+  saveProducts(); renderProducts();
+}
+function renderProducts(){
+  const q=(document.getElementById('search').value||'').trim().toLowerCase();
+  const list=products.filter(p=>!q||p.name.toLowerCase().includes(q)||p.barcode.includes(q));
+  const box=document.getElementById('plist');
+  if(!list.length){box.innerHTML='<div class="empty">'+(products.length?'没找到匹配商品':'还没有商品，点右上「＋ 新增」或导入 CSV')+'</div>';return;}
+  box.innerHTML=list.map(p=>{
+    const stock=p.stock||0;
+    const low=stock<=5;
+    return `
+    <div class="prod">
+      <div class="nm"><b>${esc(p.name)}</b><span>${p.barcode} · 库存${low?' <span style="color:var(--danger)">':' '}${stock}${low?'</span>':''}</span></div>
+      <div class="pr">¥${p.price.toFixed(2)}</div>
+      <button class="btn btn-ghost mini" onclick="openStockIn('${p.barcode}')">入库</button>
+      <button class="btn btn-line mini" onclick="editProd('${p.barcode}')">改</button>
+      <button class="btn btn-danger mini" onclick="delProd('${p.barcode}')">删</button>
+    </div>`;}).join('');
+}
+
+// ---------- 入库 ----------
+let stockingBarcode=null;
+function openStockIn(barcode){
+  const p=products.find(x=>x.barcode===barcode); if(!p)return;
+  stockingBarcode=barcode;
+  document.getElementById('stockProdName').textContent=p.name;
+  document.getElementById('stockCur').textContent=p.stock||0;
+  document.getElementById('stockAdd').value='';
+  open_('stockMask');
+}
+function confirmStockIn(){
+  const add=parseInt(document.getElementById('stockAdd').value,10);
+  if(isNaN(add)||add<=0){toast('填一下入库数量');return;}
+  const p=products.find(x=>x.barcode===stockingBarcode); if(!p)return;
+  p.stock=(p.stock||0)+add;
+  saveProducts(); renderProducts(); close_('stockMask');
+  toast('已入库 '+add+' 件，现库存 '+p.stock);
+}
+
+// ---------- 收款 ----------
+let recvStr='';
+function openPay(){
+  if(!cart.length){toast('清单还是空的');return;}
+  recvStr=''; document.getElementById('payDue').textContent='¥'+cartTotal().toFixed(2);
+  updateRecv(); open_('payMask');
+}
+function key(k){
+  if(k==='del'){recvStr=recvStr.slice(0,-1);}
+  else if(k==='.'){ if(!recvStr.includes('.')) recvStr=(recvStr||'0')+'.'; }
+  else{ if(recvStr.includes('.')&&recvStr.split('.')[1].length>=2)return; recvStr+=k; }
+  updateRecv();
+}
+function exactPay(){recvStr=cartTotal().toFixed(2);updateRecv();}
+function updateRecv(){
+  document.getElementById('recv').textContent=recvStr||'0';
+  const recv=parseFloat(recvStr||'0'), due=cartTotal(), ch=recv-due;
+  const box=document.getElementById('changeBox');
+  if(recvStr&&recv>=due) box.innerHTML='找零 <b>¥'+ch.toFixed(2)+'</b>';
+  else if(recvStr) box.innerHTML='<span style="color:var(--danger)">还差 ¥'+(due-recv).toFixed(2)+'</span>';
+  else box.innerHTML='';
+}
+function finishPay(){
+  const due=cartTotal(), recv=parseFloat(recvStr||'0');
+  if(!recvStr){ if(!confirm('没填实收，按应收 ¥'+due.toFixed(2)+' 记账？'))return; }
+  else if(recv<due){toast('实收不够');return;}
+  sales.unshift({time:Date.now(),items:cart.map(c=>({name:c.name,price:c.price,qty:c.qty})),total:due});
+  // 扣减库存（只针对有条码、能在商品库中匹配到的商品；手动加一笔的不扣）
+  cart.forEach(c=>{
+    if(!c.barcode)return;
+    const p=products.find(x=>x.barcode===c.barcode);
+    if(p) p.stock=Math.max(0,(p.stock||0)-c.qty);
+  });
+  saveSales(); saveProducts();
+  cart=[]; renderCart(); close_('payMask'); focusScan();
+  toast('收款完成 ¥'+due.toFixed(2));
+}
+
+// ---------- 记录 ----------
+function renderSales(){
+  const todayStart=new Date(); todayStart.setHours(0,0,0,0);
+  const today=sales.filter(s=>s.time>=todayStart.getTime());
+  document.getElementById('todayAmt').textContent='¥'+today.reduce((s,x)=>s+x.total,0).toFixed(0);
+  document.getElementById('todayCnt').textContent=today.length;
+  const box=document.getElementById('salelist');
+  if(!sales.length){box.innerHTML='<div class="card"><div class="empty">还没有收款记录</div></div>';return;}
+  box.innerHTML=sales.slice(0,80).map(s=>{
+    const d=new Date(s.time);
+    const det=s.items.map(i=>esc(i.name)+'×'+i.qty).join('、');
+    return `<div class="sale"><div class="hd"><span>${fmt(d)}</span><span class="amt">¥${s.total.toFixed(2)}</span></div><div class="det">${det}</div></div>`;
+  }).join('');
+}
+
+// ---------- CSV ----------
+function exportProducts(){
+  const lines=['条码,品名,价格,库存'].concat(products.map(p=>`${p.barcode},${csvCell(p.name)},${p.price},${p.stock||0}`));
+  download('商品列表.csv', '\ufeff'+lines.join('\n'));
+}
+function exportSales(){
+  if(!sales.length){toast('还没有账目');return;}
+  const lines=['时间,金额,明细'];
+  sales.forEach(s=>{ const d=fmt(new Date(s.time));
+    lines.push(`${d},${s.total.toFixed(2)},${csvCell(s.items.map(i=>i.name+'×'+i.qty).join(' '))}`);});
+  download('销售账目.csv','\ufeff'+lines.join('\n'));
+}
+function importProducts(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    const rows=r.result.replace(/\r/g,'').split('\n').filter(x=>x.trim());
+    let added=0,skipped=0;
+    rows.forEach((line,i)=>{
+      const c=line.split(',');
+      const bc=(c[0]||'').trim(); const nm=(c[1]||'').trim(); const pr=parseFloat(c[2]);
+      const stRaw=c[3]; const st=stRaw===undefined||stRaw.trim()===''?0:(parseInt(stRaw,10)||0);
+      if(i===0 && (bc==='条码'||isNaN(pr))) return;      // 跳过表头
+      if(!bc||!nm||isNaN(pr)){skipped++;return;}
+      const ex=products.find(x=>x.barcode===bc);
+      if(ex){ex.name=nm;ex.price=pr;ex.stock=st;} else products.push({barcode:bc,name:nm,price:pr,stock:st});
+      added++;
+    });
+    saveProducts(); renderProducts();
+    toast('导入成功 '+added+' 条'+(skipped?'，跳过 '+skipped:''));
+    ev.target.value='';
+  };
+  r.readAsText(f,'utf-8');
+}
+
+// ---------- 工具 ----------
+function open_(id){document.getElementById(id).classList.add('on');}
+function close_(id){document.getElementById(id).classList.remove('on'); if(id!=='prodMask')focusScan();}
+function openManual(){document.getElementById('mName').value='';document.getElementById('mPrice').value='';open_('manualMask');}
+function esc(s){return (s+'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function csvCell(s){return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function pad(n){return n<10?'0'+n:n;}
+function fmt(d){return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+function download(name,text){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));
+  a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+let tm;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(tm);tm=setTimeout(()=>t.classList.remove('on'),1600);}
+
+// 保持扫码输入框聚焦（点空白处回到扫码框）
+document.addEventListener('click',e=>{
+  if(document.getElementById('pay').classList.contains('hide'))return;
+  if(e.target.closest('input,button,.mask,select'))return;
+  focusScan();
+});
+
+load();
+</script>
